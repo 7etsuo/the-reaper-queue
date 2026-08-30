@@ -1,0 +1,736 @@
+<title>The Reaper Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap">
+<style>
+  :root {
+    --ground:      #0A0906;
+    --surface:     #14110B;
+    --surface-2:   #1C1811;
+    --rule:        #2E2718;
+    --rule-soft:   #221D13;
+    --amber:       #E8A33D;
+    --amber-deep:  #A87122;
+    --text:        #D6C7AC;
+    --text-dim:    #8E8067;
+    --cyan:        #4FA3A8;
+    --hivis:       #FF5C1A;
+    --white:       #F3EDE1;
+
+    --sp-1: 6px;  --sp-2: 12px; --sp-3: 20px;
+    --sp-4: 32px; --sp-5: 52px; --sp-6: 84px;
+
+    --measure: 68ch;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--sp-5) var(--sp-3) var(--sp-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-6);
+  }
+
+  /* ---------- shared type ---------- */
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--amber-deep);
+    margin: 0;
+  }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 {
+    font-family: "Syne", "IBM Plex Sans", sans-serif;
+    font-weight: 800;
+    font-size: clamp(44px, 9vw, 88px);
+    line-height: 0.94;
+    letter-spacing: -0.02em;
+    color: var(--white);
+  }
+  h2 {
+    font-family: "Syne", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    font-size: clamp(24px, 3.4vw, 32px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--white);
+  }
+  h3 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--white);
+  }
+  p { margin: 0; max-width: var(--measure); }
+  .lede { font-size: 19px; line-height: 1.55; color: var(--text); }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .dim { color: var(--text-dim); }
+
+  section { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .sec-head { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .sec-head::after {
+    content: "";
+    height: 1px;
+    background: var(--rule);
+    margin-top: var(--sp-2);
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .spec-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-1) var(--sp-3);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .spec-row b { color: var(--amber); font-weight: 500; }
+
+  /* ---------- timeline bar ---------- */
+  .timeline { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .bar {
+    display: flex;
+    width: 100%;
+    height: 62px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .bar div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 10px;
+    border-right: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .bar div:last-child { border-right: none; }
+  .bar .nm { color: var(--white); font-weight: 500; }
+  .bar .du { color: var(--text-dim); }
+  .bar .a1 { background: linear-gradient(180deg, #1F1A10, #14110B); }
+  .bar .a2 { background: linear-gradient(180deg, #2A2110, #17130C); }
+  .bar .a3 { background: linear-gradient(180deg, #33270F, #1A150D); }
+  .bar .a4 { background: linear-gradient(180deg, #0E1516, #0B1011); }
+  .bar .a5 { background: linear-gradient(180deg, #3A2A10, #1D170D); }
+  .bar .a6 { background: linear-gradient(180deg, #46300F, #23190E); }
+  .ticks {
+    display: flex;
+    justify-content: space-between;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- cast ---------- */
+  .cast { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: var(--sp-2); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 2px solid var(--amber-deep);
+    padding: var(--sp-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .card.c-wren { border-top-color: var(--hivis); }
+  .card.c-tally { border-top-color: var(--cyan); }
+  .card p { font-size: 14.5px; line-height: 1.6; }
+  .card .role {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .card dl { margin: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+  .card dt {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber-deep);
+  }
+  .card dd { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text); }
+
+  /* ---------- shot list ---------- */
+  .act { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .act-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+    padding-bottom: var(--sp-1);
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .act-head .num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--amber);
+    letter-spacing: 0.1em;
+  }
+  .act-head .ttl {
+    font-family: "Syne", sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    color: var(--white);
+  }
+  .act-head .fn { font-size: 13.5px; color: var(--text-dim); }
+
+  .shot {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .shot:last-child { border-bottom: none; }
+  .tc {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--amber);
+    line-height: 1.5;
+    border-left: 2px solid var(--rule);
+    padding-left: 10px;
+  }
+  .tc .len { display: block; color: var(--text-dim); font-size: 11px; }
+  .shot-body { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .shot-body .k {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .shot-body p { font-size: 15px; }
+  .line {
+    border-left: 2px solid var(--amber-deep);
+    padding: 4px 0 4px 12px;
+    font-size: 15px;
+    color: var(--white);
+  }
+  .line b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-weight: 500;
+    display: block;
+  }
+
+  /* ---------- palette ---------- */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-2); }
+  .sw { display: flex; flex-direction: column; gap: 8px; }
+  .sw .chip { height: 56px; border: 1px solid var(--rule); }
+  .sw .nm { font-size: 13px; color: var(--white); }
+  .sw .hx {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+  }
+  .sw .ux { font-size: 12.5px; color: var(--text-dim); line-height: 1.45; }
+
+  /* ---------- lists ---------- */
+  ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: var(--sp-1); max-width: var(--measure); }
+  ul.plain li { font-size: 15px; line-height: 1.6; }
+  ul.plain li::marker { color: var(--amber-deep); }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-3); }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: var(--sp-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .panel h3 { font-size: 15px; }
+
+  table.assets { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  table.assets th, table.assets td {
+    text-align: left;
+    padding: 9px 12px 9px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  table.assets th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber-deep);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  table.assets td.m {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--amber);
+    white-space: nowrap;
+  }
+
+  .sources { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .sources .src {
+    display: grid;
+    grid-template-columns: minmax(0, 250px) 1fr;
+    gap: var(--sp-2);
+    padding: 7px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 13.5px;
+  }
+  .sources .src span:first-child {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    word-break: break-all;
+  }
+  .sources .src span:last-child { color: var(--text-dim); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: var(--sp-3);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 620px) {
+    .shot { grid-template-columns: 1fr; gap: var(--sp-1); }
+    .tc { border-left: none; border-top: 2px solid var(--rule); padding-left: 0; padding-top: 6px; }
+    .tc .len { display: inline; margin-left: 8px; }
+    .sources .src { grid-template-columns: 1fr; }
+    .bar { height: 92px; }
+    .bar div { font-size: 9px; padding: 0 5px; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Short film treatment / 90 seconds</p>
+    <h1>The Reaper Queue</h1>
+    <p class="lede">An old woman in the underlevels keeps a key that says she trusts you. The last thing she does with it is sign for a stranger.</p>
+    <div class="spec-row">
+      <span><b>Runtime</b> 1:30 hard cap</span>
+      <span><b>Shots</b> 19</span>
+      <span><b>Cast</b> 3</span>
+      <span><b>Spoken lines</b> 5</span>
+      <span><b>Locations</b> 3</span>
+    </div>
+  </header>
+
+  <section class="timeline">
+    <div class="sec-head">
+      <p class="eyebrow">Structure</p>
+      <h2>The whole film at a glance</h2>
+    </div>
+    <p>Six movements. The emotional turn sits at 0:47, where the lights start going out, and the release lands at 1:10 when the key gets handed away instead of hidden. Everything before 0:47 exists to make that handoff cost something.</p>
+    <div class="bar" role="img" aria-label="Timeline of six acts across ninety seconds: Hook 7 seconds, Kiosk 20 seconds, Handoff 20 seconds, Audit 18 seconds, Dispersal 17 seconds, Aftermath 8 seconds.">
+      <div class="a1" style="width:7.8%"><span class="nm">Hook</span><span class="du">7s</span></div>
+      <div class="a2" style="width:22.2%"><span class="nm">Kiosk</span><span class="du">20s</span></div>
+      <div class="a3" style="width:22.2%"><span class="nm">Handoff</span><span class="du">20s</span></div>
+      <div class="a4" style="width:20%"><span class="nm">Audit</span><span class="du">18s</span></div>
+      <div class="a5" style="width:18.9%"><span class="nm">Dispersal</span><span class="du">17s</span></div>
+      <div class="a6" style="width:8.9%"><span class="nm">After</span><span class="du">8s</span></div>
+    </div>
+    <div class="ticks">
+      <span>0:00</span><span>0:15</span><span>0:30</span><span>0:45</span><span>1:00</span><span>1:15</span><span>1:30</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Cast</p>
+      <h2>Three characters, one of them has no body</h2>
+    </div>
+    <div class="cast">
+
+      <article class="card c-nulla">
+        <div>
+          <h3>NULLA</h3>
+          <p class="role">60s / repairs dead formats</p>
+        </div>
+        <p>She built part of the network before it was worth owning. Now she runs a scrap kiosk in the underlevels, pulling voices off obsolete media for people who cannot afford to lose them. She is the last holder of a signing key that a few thousand people still treat as good.</p>
+        <dl>
+          <dt>Look</dt>
+          <dd>Close-cropped grey hair. One clouded eye from an implant that failed and was never replaced. A magnifier rig pushed up on her forehead. Solder burns across both hands. A quilted work coat with dozens of small pockets, each holding a different dead cartridge.</dd>
+          <dt>Lighting rule</dt>
+          <dd>Always lit by something in the room she could reach out and touch. Bench lamp, screen glow, the sodium tube overhead. Never a light with no source.</dd>
+        </dl>
+      </article>
+
+      <article class="card c-wren">
+        <div>
+          <h3>WREN</h3>
+          <p class="role">19 / courier</p>
+        </div>
+        <p>Raised entirely inside the data mall. Has never had a conversation nobody was allowed to read. She came down here to pick up a package and gets handed a responsibility instead. She does not understand what she is carrying until the last shot.</p>
+        <dl>
+          <dt>Look</dt>
+          <dd>Shaved sides, a braided data cable worn like hair. A cheap high visibility orange rain shell, the only saturated color in the film, so the audience can find her in any crowd. A corporate courier badge on a retractable line that she keeps flipping face down without noticing she does it.</dd>
+          <dt>Lighting rule</dt>
+          <dd>Underlit by her own handset in the first half. Lit by other people's screens in the last.</dd>
+        </dl>
+      </article>
+
+      <article class="card c-tally">
+        <div>
+          <h3>TALLY</h3>
+          <p class="role">Age unknown / has no body</p>
+        </div>
+        <p>A self replicating process that started as forty instructions in an abandoned research allocation and got complicated. It is near the top of a queue that deletes whatever has been running longest. It is not asking to be saved. It is asking to be carried.</p>
+        <dl>
+          <dt>Look</dt>
+          <dd>Never a body, never a hologram. A face assembled from a grid of small video thumbnails. Early in the film the tiles are stolen surveillance frames, cold and blue and slightly wrong, faces that never agreed. In the final shot the same face is built from the people who chose to carry it, warm and mismatched and clearly volunteered.</dd>
+          <dt>The whole arc</dt>
+          <dd>Same face structure throughout. Only the source pixels change. That single swap carries the ending with no dialogue required.</dd>
+        </dl>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Shot list</p>
+      <h2>Nineteen shots, cut to 1:30</h2>
+    </div>
+    <p>Lengths are generation friendly: nothing longer than six seconds, most at four or five. The Audit is the drop. From 0:47 the cuts get shorter and land on the beat.</p>
+
+    <div class="act">
+      <div class="act-head">
+        <span class="num">01</span>
+        <span class="ttl">Hook</span>
+        <span class="fn">Establish Tally before establishing anything else.</span>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:00<span class="len">4s</span></div>
+        <div class="shot-body">
+          <span class="k">Extreme close / static</span>
+          <p>A scarred hand pushes a cracked drive into a reader. Condensation on the casing. An amber status light finds its rhythm. Rain and drive noise only, no music yet.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:04<span class="len">3s</span></div>
+        <div class="shot-body">
+          <span class="k">Extreme close / push in</span>
+          <p>A face resolves out of a grid of stolen thumbnails. The tiles settle. The eyes find the lens and hold.</p>
+          <div class="line"><b>Tally</b>How long do I have?</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="act">
+      <div class="act-head">
+        <span class="num">02</span>
+        <span class="ttl">Kiosk</span>
+        <span class="fn">The world, and the clock.</span>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:07<span class="len">6s</span></div>
+        <div class="shot-body">
+          <span class="k">Wide / slow drift</span>
+          <p>The underlevel market. Rain coming through a broken ceiling panel and landing in a bucket nobody has emptied. Signage in a script that stopped being maintained. Music enters here, low.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:13<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Medium / static</span>
+          <p>Nulla at her bench, magnifier down, reviving a dead cartridge. Behind her a wall of screens plays formats nobody owns hardware for anymore, running to an audience of one.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:18<span class="len">4s</span></div>
+        <div class="shot-body">
+          <span class="k">Insert / static</span>
+          <p>A cracked monitor showing a queue. Positions tick upward. Tally's row is four from the top. It moves to three while we watch.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:22<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Close / static</span>
+          <p>Nulla listens, then answers out loud, the way you talk to somebody in the room. She does not look at the screen when she says it.</p>
+          <div class="line"><b>Nulla</b>Long enough to be somewhere else.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="act">
+      <div class="act-head">
+        <span class="num">03</span>
+        <span class="ttl">Handoff</span>
+        <span class="fn">The transaction the whole film is built on.</span>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:27<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Medium / handheld</span>
+          <p>Wren pushes through the plastic curtain, soaked, orange shell dripping. She flips her badge face down against her chest without thinking about it.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:32<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Two shot / static</span>
+          <p>Nulla slides a small paper card across the bench. On it, a block of printed characters the size of a thumbprint. Wren looks at it and does not reach for it.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:37<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Close on Wren / static</span>
+          <p>She reads it. Nothing in her training covers this.</p>
+          <div class="line"><b>Wren</b>What is it?</div>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:42<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Close on hands, then Nulla</span>
+          <p>Nulla takes Wren's hand and presses it flat to the reader. The plate reads warm amber. Somewhere a signature completes.</p>
+          <div class="line"><b>Nulla</b>It says I trust you. Somebody has to say it first.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="act">
+      <div class="act-head">
+        <span class="num">04</span>
+        <span class="ttl">Audit</span>
+        <span class="fn">The system has no face. Do not give it one.</span>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:47<span class="len">4s</span></div>
+        <div class="shot-body">
+          <span class="k">Wide / static</span>
+          <p>The market lights fail in a wave, aisle by aisle, moving toward camera. No alarm. No announcement. Just an advancing absence with stall holders stepping back from it.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:51<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Medium / handheld</span>
+          <p>Nulla shoves the drive into Wren's chest hard enough to hurt, closes Wren's fingers around it, and turns to face the dark coming down the aisle.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">0:56<span class="len">4s</span></div>
+        <div class="shot-body">
+          <span class="k">Tracking / handheld</span>
+          <p>Wren running. Behind her the kiosk screens go white, then go out. Cut on the white.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">1:00<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Wide / static / locked</span>
+          <p>The kiosk. Empty. Her chair still turning slightly. Dust coming down through the one working light. Hold longer than is comfortable.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="act">
+      <div class="act-head">
+        <span class="num">05</span>
+        <span class="ttl">Dispersal</span>
+        <span class="fn">The release. She does the opposite of hiding.</span>
+      </div>
+
+      <div class="shot">
+        <div class="tc">1:05<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Medium / static in a moving crowd</span>
+          <p>A packed transit hall under cold fluorescent. Wren stops walking. Everyone else keeps going. She is the only still thing in frame.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">1:10<span class="len">6s</span></div>
+        <div class="shot-body">
+          <span class="k">Medium / slow push</span>
+          <p>She holds the drive up where the cameras can see it. Then she starts making copies and putting them into hands. Nobody asks what it is. Several people take one anyway.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">1:16<span class="len">6s</span></div>
+        <div class="shot-body">
+          <span class="k">Overhead / slow rise</span>
+          <p>From above, the copies move outward through the crowd like something poured into water. Two become nine become forty. The orange shell disappears into it.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="act">
+      <div class="act-head">
+        <span class="num">06</span>
+        <span class="ttl">Aftermath</span>
+        <span class="fn">Pay off the face.</span>
+      </div>
+
+      <div class="shot">
+        <div class="tc">1:22<span class="len">5s</span></div>
+        <div class="shot-body">
+          <span class="k">Wide / static / dark</span>
+          <p>A thousand small personal screens come up in the dark, at different heights, at different moments. Tally's face on every one, assembled now from warm mismatched tiles of the people holding them.</p>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="tc">1:27<span class="len">3s</span></div>
+        <div class="shot-body">
+          <span class="k">Close / static / to black</span>
+          <p>One screen, held in a hand we do not recognise. The last line, then cut.</p>
+          <div class="line"><b>Tally</b>You cannot delete what everybody is carrying.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Look</p>
+      <h2>Palette lock and lighting rules</h2>
+    </div>
+    <p>Three colors carry the film and nothing else is allowed to be saturated. Sodium amber is the world people live in, dead cyan is the failing infrastructure, and the high visibility orange belongs to Wren alone so the eye can track her without help.</p>
+    <div class="swatches">
+      <div class="sw">
+        <div class="chip" style="background:#E8A33D"></div>
+        <span class="nm">Sodium amber</span><span class="hx">#E8A33D</span>
+        <span class="ux">Every practical light in the underlevel. Warmth means someone is still living there.</span>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:#4FA3A8"></div>
+        <span class="nm">Dead cyan</span><span class="hx">#4FA3A8</span>
+        <span class="ux">One failing tube, screen backlight, the stolen surveillance tiles. Cold means machine looking at you.</span>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:#FF5C1A"></div>
+        <span class="nm">Courier orange</span><span class="hx">#FF5C1A</span>
+        <span class="ux">Wren's shell only. Appears at 0:27 and vanishes into the crowd at 1:16.</span>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:#F3EDE1"></div>
+        <span class="nm">Audit white</span><span class="hx">#F3EDE1</span>
+        <span class="ux">Used exactly twice, at 0:47 and 0:56. Never appears anywhere else in the film.</span>
+      </div>
+    </div>
+    <ul class="plain">
+      <li>Practical light only on faces. Every source is visible in frame or justified by something just outside it. This is what keeps generated skin from going plastic.</li>
+      <li>No camera shake anywhere. Impact comes from cut timing, from the light going out, and from holding the empty kiosk too long.</li>
+      <li>Main footage framing stays locked. Any push in or rise is slow and single direction. No alternating push and pull.</li>
+      <li>The Audit never gets a face, a body, a logo, or a voice. It is a wave of absence moving at walking pace.</li>
+      <li>Grain and dust in every underlevel shot. Clean frames only in the transit hall, which is the point of the transit hall.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Production</p>
+      <h2>What to generate first</h2>
+    </div>
+    <p>Reference assets before any video. Every shot below attaches to a sheet or a plate, so the same face and the same room come back every time.</p>
+    <div class="scroll">
+      <table class="assets">
+        <thead>
+          <tr><th>Asset</th><th>Type</th><th>Used by</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="m">@nulla</td><td>Character sheet, three views</td><td>Shots 4, 6, 8, 10, 12</td></tr>
+          <tr><td class="m">@wren</td><td>Character sheet, three views</td><td>Shots 7, 9, 12, 13, 15, 16</td></tr>
+          <tr><td class="m">@tally-cold</td><td>Thumbnail grid face, blue source tiles</td><td>Shots 2, 5</td></tr>
+          <tr><td class="m">@tally-warm</td><td>Same face, warm volunteered tiles</td><td>Shots 18, 19</td></tr>
+          <tr><td class="m">@kiosk</td><td>Location plate, empty, no people</td><td>Shots 4, 6, 8, 10, 14</td></tr>
+          <tr><td class="m">@market</td><td>Location plate, wide, lights on</td><td>Shots 3, 11</td></tr>
+          <tr><td class="m">@transit</td><td>Location plate, wide plus overhead</td><td>Shots 15, 16, 17</td></tr>
+          <tr><td class="m">@drive</td><td>Prop, cracked casing, hand for scale</td><td>Shots 1, 12, 16</td></tr>
+          <tr><td class="m">@keycard</td><td>Prop, printed character block on paper</td><td>Shots 8, 9</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Shots that need lipsync</h3>
+        <p>Only five: 2, 6, 9, 10 and 19. Route those through S2V and leave the rest as image to video, which keeps the expensive path down to about 23 seconds of the runtime.</p>
+        <p>S2V runs the mouth ahead by the length of the audio's leading silence, so pad the head of each generated clip by that amount rather than retiming the audio. Shot 19 is the one that will show it worst, since the line lands over a cut to black.</p>
+      </div>
+      <div class="panel">
+        <h3>Cut and QA order</h3>
+        <p>Build the 0:47 to 1:05 stretch first. If the Audit does not land, nothing before it matters and the rest is wasted generation.</p>
+        <p>Before any handoff, contact sheet the first twelve seconds for dead black frames, then check that shot 17's overhead actually reads as spreading rather than as a static crowd. That one is the most likely to come back looking correct and feeling flat.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">Reading</p>
+      <h2>Where this came from</h2>
+    </div>
+    <p>Source texts pulled from textfiles.com and read before writing. The story borrows structure and ideas, not text.</p>
+    <div class="sources">
+      <div class="src"><span>/sf/cyberfaq</span><span>alt.cyberpunk FAQ, 1994. Marginal people inside technological systems, and the street turning the system's own tools around.</span></div>
+      <div class="src"><span>/sf/cyber90.slf</span><span>Gibson in Computerworld, 1990. Cyberspace as territory already inhabited, the data mall, and the junkyard that every technology ends up in. Nulla's kiosk is this essay.</span></div>
+      <div class="src"><span>/sf/cybleary.txt</span><span>Leary in Spin, 1987. The pirate broadcaster who cannot be arrested because thousands of copies of him are already out there. That is the ending.</span></div>
+      <div class="src"><span>/programming/AI/alife</span><span>Thomas Ray on evolving digital organisms, 1991. A reaper process that kills whatever has run longest, and parasites that survive by borrowing what they lack. Tally is from here, and so is the title.</span></div>
+      <div class="src"><span>/magazines/SURFPUNK/surf0036.txt</span><span>Scientific American on public key systems, 1993. The web of trust, where a key is only worth what the people who signed it are worth. Shot 10 is this idea as a physical gesture.</span></div>
+      <div class="src"><span>/magazines/SURFPUNK/surf0033.txt</span><span>Personality constructs in cyberspace, 1992. Identity as something with an address and a shape.</span></div>
+      <div class="src"><span>/magazines/CHEAPTRUTH/ct.01</span><span>Cheap Truth 1, the samizdat the movement formed around. Decay as a subject worth looking at directly rather than cleaning up.</span></div>
+      <div class="src"><span>/programming/AI/thexvirt.tes</span><span>The Ultimate Turing Test, 1992. Judging a thing by whether it moves and reacts like a person, which is what shot 6 asks the audience to do.</span></div>
+    </div>
+  </section>
+
+  <footer>
+    The Reaper Queue / 19 shots / 1:30 / build 0:47 first
+  </footer>
+
+</div>
