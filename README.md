@@ -2,7 +2,11 @@
 
 A 90 second cyberpunk short, generated locally in ComfyUI.
 
-`THE_REAPER_QUEUE_90s.mp4` is the finished film. 1920x804 (2.39:1), 16 fps, 90.000 seconds, 19 shots.
+`THE_REAPER_QUEUE_H3_90s.mp4` is the finished film. 1920x802 (2.39:1), 24 fps, 90.000 seconds, 19 shots.
+
+`THE_REAPER_QUEUE_90s.mp4` is an earlier version of the same cut rendered on Wan 2.2. It is kept for
+comparison. It is softer, and character identity drifts between shots because each shot re-described
+the characters in text instead of binding them to an approved reference.
 
 ## Story
 
@@ -36,21 +40,35 @@ Stills come from two models. Character sheets use Ideogram 4 (conditional plus u
 through a dual model guider). Locations, props and the mosaic faces use FLUX.2 Klein with the
 Qwen3-VL text encoder.
 
-Motion is Wan 2.2 image to video, 4 steps, cfg 1.0, euler_ancestral, 832x480, then cropped to
-2.39:1 and scaled to 1920 wide.
+Motion is MiniMax H3 `ref2va` with a locally trained GITS aesthetic LoRA
+(`h3_gits_aesthetic_124f_r16_20260812_compiled20steady`, step 452, strength 1.0), Qwen3-VL 32B as the
+text encoder, res_multistep with the simple scheduler at 20 steps, 1024x576 and 24 fps, then cropped
+to 2.39:1 and scaled to 1920 wide. Most shots are 124 frames, which is the length the LoRA was
+trained at.
+
+Characters, locations and props are bound with named references rather than described per shot. The
+eight approved images in `stills/` are registered into a reference registry project and then referred
+to in prompts as @nulla, @wren, @tally, @kiosk, @market, @transit, @drive and @keycard.
+
+H3 generates audio as well as picture, so each shot carries its own ambience. The ACE-Step score sits
+over that mix.
 
 The score is ACE-Step, instrumental, generated at 94 seconds and cut to 90 with a silent first 7
 seconds so the music enters on the third shot.
 
 `pipeline/` holds the scripts that produced everything. Paths in them are machine specific.
 
-    driver.py     submit graphs to ComfyUI and poll for results
-    sheet.py      character sheets
-    plates.py     location plates, props, the two mosaic faces
-    shots.py      the 19 shot definitions, still prompt and motion prompt per shot
-    i2v2.py       image to video for all 19 shots
-    score.py      the instrumental score
-    assemble.sh   trim to exact frame counts, crop to 2.39:1, concat
+    driver.py       submit graphs to ComfyUI and poll for results
+    sheet.py        character sheets
+    plates.py       location plates, props, the two mosaic faces
+    register.py     approve the eight reference images into the registry
+    shots_h3.py     the 19 shot prompts using named references
+    h3.py           MiniMax H3 render for all 19 shots
+    assemble_h3.sh  trim to exact frame counts, crop to 2.39:1, concat, mix score
+    score.py        the instrumental score
+    shots.py        earlier Wan shot definitions
+    i2v2.py         earlier Wan image to video pass
+    assemble.sh     earlier Wan assembly
 
 `treatment.html` is the original plan the film was built from.
 
@@ -74,9 +92,13 @@ until it went into the negative.
 
 ## Known issues
 
-Nulla's coat reads brown in several shots instead of the quilted charcoal from her sheet, and in one
-shot her gender reads wrong. Per shot text to image cannot hold identity the way an edit model
-composite from an approved sheet would.
+Approving a three panel character sheet as a character reference does not work. The first attempt
+bound @nulla to an unrelated elderly man. Re-approving from a single cropped portrait of the same
+sheet fixed it, and adding an explicit wardrobe sentence to every prompt containing a character alias
+locked the coat and the blind eye. Use single portraits for character aliases.
+
+Shot 18 had to be regenerated once. The original prompt asked for screens lighting up across
+darkness, which opened the shot on half a second of pure black.
 
 There is no dialogue. The treatment specifies five spoken lines, in shots 2, 6, 9, 10 and 19. Those
 need a speech to video pass, and the video head has to be padded by the length of the audio's
